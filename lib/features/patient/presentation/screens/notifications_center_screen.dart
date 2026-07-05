@@ -6,7 +6,7 @@ import '../../../../config/routes.dart';
 import '../../../../config/theme.dart';
 import '../../../../core/utils/date_formatters.dart';
 import '../../data/models/notification_model.dart';
-import '../../../auth/presentation/providers/patient_provider.dart';
+import '../../providers/patient_provider.dart';
 
 enum _NotificationFilter {
   all,
@@ -15,38 +15,183 @@ enum _NotificationFilter {
   message,
 }
 
-class NotificationsScreen extends ConsumerStatefulWidget {
-  const NotificationsScreen({super.key});
-
-  @override
-  ConsumerState<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  _NotificationFilter _filter = _NotificationFilter.all;
-
-  List<NotificationModel> _applyFilter(List<NotificationModel> notifications) {
-    switch (_filter) {
+extension _NotificationFilterX on _NotificationFilter {
+  String get label {
+    switch (this) {
       case _NotificationFilter.all:
-        return notifications;
-
+        return 'All';
       case _NotificationFilter.unread:
-        return notifications.where((item) => !item.isRead).toList();
-
+        return 'Unread';
       case _NotificationFilter.booking:
-        return notifications
-            .where((item) => item.type == NotificationType.booking)
-            .toList();
-
+        return 'Bookings';
       case _NotificationFilter.message:
-        return notifications
-            .where((item) => item.type == NotificationType.message)
-            .toList();
+        return 'Messages';
     }
   }
 
-  void _goBack() {
+  String get emptyTitle {
+    switch (this) {
+      case _NotificationFilter.all:
+        return 'No notifications';
+      case _NotificationFilter.unread:
+        return 'No unread notifications';
+      case _NotificationFilter.booking:
+        return 'No booking notifications';
+      case _NotificationFilter.message:
+        return 'No message notifications';
+    }
+  }
+
+  String get emptySubtitle {
+    switch (this) {
+      case _NotificationFilter.all:
+        return "You're all caught up!";
+      case _NotificationFilter.unread:
+        return 'All notifications have been read.';
+      case _NotificationFilter.booking:
+        return 'Booking updates will appear here.';
+      case _NotificationFilter.message:
+        return 'Message notifications will appear here.';
+    }
+  }
+
+  IconData get emptyIcon {
+    switch (this) {
+      case _NotificationFilter.all:
+        return Icons.notifications_off_outlined;
+      case _NotificationFilter.unread:
+        return Icons.mark_email_read_outlined;
+      case _NotificationFilter.booking:
+        return Icons.event_busy_rounded;
+      case _NotificationFilter.message:
+        return Icons.chat_bubble_outline_rounded;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Providers
+// -----------------------------------------------------------------------------
+
+final _notificationFilterProvider =
+    StateProvider.autoDispose<_NotificationFilter>(
+  (ref) => _NotificationFilter.all,
+);
+
+final _notificationsCenterDataProvider =
+    Provider.autoDispose<_NotificationsCenterData>((ref) {
+  final notifications = ref.watch(notificationsProvider);
+  return _NotificationsCenterData.fromNotifications(notifications);
+});
+
+final _visibleNotificationsProvider =
+    Provider.autoDispose<List<NotificationModel>>((ref) {
+  final filter = ref.watch(_notificationFilterProvider);
+  final data = ref.watch(_notificationsCenterDataProvider);
+
+  return data.listFor(filter);
+});
+
+final _unreadNotificationsCountProvider = Provider.autoDispose<int>((ref) {
+  final data = ref.watch(_notificationsCenterDataProvider);
+  return data.unreadCount;
+});
+
+// -----------------------------------------------------------------------------
+// Optimized computed data
+// -----------------------------------------------------------------------------
+
+class _NotificationsCenterData {
+  final List<NotificationModel> all;
+  final List<NotificationModel> unread;
+  final List<NotificationModel> booking;
+  final List<NotificationModel> message;
+  final int unreadCount;
+
+  const _NotificationsCenterData({
+    required this.all,
+    required this.unread,
+    required this.booking,
+    required this.message,
+    required this.unreadCount,
+  });
+
+  factory _NotificationsCenterData.fromNotifications(
+    List<NotificationModel> notifications,
+  ) {
+    final allNotifications = List<NotificationModel>.from(notifications);
+    final unreadNotifications = <NotificationModel>[];
+    final bookingNotifications = <NotificationModel>[];
+    final messageNotifications = <NotificationModel>[];
+
+    for (final notification in notifications) {
+      if (!notification.isRead) {
+        unreadNotifications.add(notification);
+      }
+
+      switch (notification.type) {
+        case NotificationType.booking:
+          bookingNotifications.add(notification);
+          break;
+
+        case NotificationType.message:
+          messageNotifications.add(notification);
+          break;
+
+        default:
+          break;
+      }
+    }
+
+    allNotifications.sort(_compareNotificationNewestFirst);
+    unreadNotifications.sort(_compareNotificationNewestFirst);
+    bookingNotifications.sort(_compareNotificationNewestFirst);
+    messageNotifications.sort(_compareNotificationNewestFirst);
+
+    return _NotificationsCenterData(
+      all: List.unmodifiable(allNotifications),
+      unread: List.unmodifiable(unreadNotifications),
+      booking: List.unmodifiable(bookingNotifications),
+      message: List.unmodifiable(messageNotifications),
+      unreadCount: unreadNotifications.length,
+    );
+  }
+
+  List<NotificationModel> listFor(_NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return all;
+      case _NotificationFilter.unread:
+        return unread;
+      case _NotificationFilter.booking:
+        return booking;
+      case _NotificationFilter.message:
+        return message;
+    }
+  }
+}
+
+int _compareNotificationNewestFirst(
+  NotificationModel a,
+  NotificationModel b,
+) {
+  final dateCompare = b.createdAt.compareTo(a.createdAt);
+
+  if (dateCompare != 0) {
+    return dateCompare;
+  }
+
+  return a.id.compareTo(b.id);
+}
+
+// -----------------------------------------------------------------------------
+// Screen
+// -----------------------------------------------------------------------------
+
+class NotificationsCenterScreen extends StatelessWidget {
+  const NotificationsCenterScreen({super.key});
+
+  void _goBack(BuildContext context) {
     if (context.canPop()) {
       context.pop();
       return;
@@ -55,106 +200,80 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     context.go(AppRoutes.patientHome);
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
-    final notifier = ref.read(notificationsProvider.notifier);
-
-    notifier.markAsRead(notification.id);
-
-    switch (notification.type) {
-      case NotificationType.booking:
-        context.push(AppRoutes.bookingHistory);
-        break;
-
-      case NotificationType.message:
-        context.push(AppRoutes.patientMessages);
-        break;
-
-      default:
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final allNotifications = ref.watch(notificationsProvider);
-    final notifier = ref.read(notificationsProvider.notifier);
-
-    final filteredNotifications = _applyFilter(allNotifications);
-    final unreadCount =
-        allNotifications.where((notification) => !notification.isRead).length;
-
     return Scaffold(
       backgroundColor: AppColors.bgGray,
       appBar: AppBar(
         title: const Text('Notifications'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: _goBack,
+          onPressed: () => _goBack(context),
         ),
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: notifier.markAllAsRead,
-              child: Text(
-                'Mark all read',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ),
+        actions: const [
+          _MarkAllReadAction(),
         ],
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Column(
           children: [
-            _FilterChips(
-              selectedFilter: _filter,
-              onFilterChanged: (filter) {
-                setState(() => _filter = filter);
-              },
-            ),
+            _FilterChipsConsumer(),
             Expanded(
-              child: filteredNotifications.isEmpty
-                  ? const _EmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      itemCount: filteredNotifications.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) {
-                        final notification = filteredNotifications[index];
-
-                        return Dismissible(
-                          key: ValueKey(notification.id),
-                          direction: DismissDirection.endToStart,
-                          background: const _DismissBackground(),
-                          onDismissed: (_) {
-                            notifier.delete(notification.id);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Notification deleted'),
-                                action: SnackBarAction(
-                                  label: 'Undo',
-                                  onPressed: () {
-                                    // TODO: Add restore notification in provider if needed.
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                          child: _NotificationCard(
-                            notification: notification,
-                            onTap: () => _handleNotificationTap(notification),
-                          ),
-                        );
-                      },
-                    ),
+              child: _NotificationsListConsumer(),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// AppBar action
+// -----------------------------------------------------------------------------
+
+class _MarkAllReadAction extends ConsumerWidget {
+  const _MarkAllReadAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(_unreadNotificationsCountProvider);
+
+    if (unreadCount <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return TextButton(
+      onPressed: () {
+        ref.read(notificationsProvider.notifier).markAllAsRead();
+      },
+      child: Text(
+        'Mark all read',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Filter chips
+// -----------------------------------------------------------------------------
+
+class _FilterChipsConsumer extends ConsumerWidget {
+  const _FilterChipsConsumer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedFilter = ref.watch(_notificationFilterProvider);
+
+    return _FilterChips(
+      selectedFilter: selectedFilter,
+      onFilterChanged: (filter) {
+        ref.read(_notificationFilterProvider.notifier).state = filter;
+      },
     );
   }
 }
@@ -170,12 +289,7 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const options = {
-      _NotificationFilter.all: 'All',
-      _NotificationFilter.unread: 'Unread',
-      _NotificationFilter.booking: 'Bookings',
-      _NotificationFilter.message: 'Messages',
-    };
+    const filters = _NotificationFilter.values;
 
     return SizedBox(
       height: 54,
@@ -185,45 +299,52 @@ class _FilterChips extends StatelessWidget {
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.sm,
         ),
-        itemCount: options.length,
+        itemCount: filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
         itemBuilder: (context, index) {
-          final entry = options.entries.elementAt(index);
-          final isSelected = selectedFilter == entry.key;
+          final filter = filters[index];
+          final isSelected = selectedFilter == filter;
 
-          return GestureDetector(
-            onTap: () => onFilterChanged(entry.key),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-              ),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryBlue : AppColors.white,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                border: Border.all(
-                  color:
-                      isSelected ? AppColors.primaryBlue : AppColors.borderGray,
+          return Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              onTap: isSelected ? null : () => onFilterChanged(filter),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
                 ),
-                boxShadow: [
-                  BoxShadow(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primaryBlue : AppColors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  border: Border.all(
                     color: isSelected
-                        ? AppColors.primaryBlue.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.025),
-                    blurRadius: isSelected ? 12 : 8,
-                    offset: const Offset(0, 5),
+                        ? AppColors.primaryBlue
+                        : AppColors.borderGray,
                   ),
-                ],
-              ),
-              child: Text(
-                entry.value,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: isSelected ? AppColors.white : AppColors.textDark,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                  boxShadow: [
+                    BoxShadow(
+                      color: isSelected
+                          ? AppColors.primaryBlue.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.025),
+                      blurRadius: isSelected ? 12 : 8,
+                      offset: const Offset(0, 5),
                     ),
+                  ],
+                ),
+                child: Text(
+                  filter.label,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color:
+                            isSelected ? AppColors.white : AppColors.textDark,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                ),
               ),
             ),
           );
@@ -232,6 +353,142 @@ class _FilterChips extends StatelessWidget {
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// Notifications list consumer
+// -----------------------------------------------------------------------------
+
+class _NotificationsListConsumer extends ConsumerWidget {
+  const _NotificationsListConsumer();
+
+  void _handleNotificationTap(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationModel notification,
+  ) {
+    final notifier = ref.read(notificationsProvider.notifier);
+
+    if (!notification.isRead) {
+      notifier.markAsRead(notification.id);
+    }
+
+    switch (notification.type) {
+      case NotificationType.booking:
+        context.push(AppRoutes.bookingHistory);
+        break;
+
+      case NotificationType.message:
+        context.push(AppRoutes.patientMessages);
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  void _deleteNotification(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationModel notification,
+  ) {
+    final notifier = ref.read(notificationsProvider.notifier);
+
+    notifier.delete(notification.id);
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Notification deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              notifier.restore(notification);
+            },
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedFilter = ref.watch(_notificationFilterProvider);
+    final visibleNotifications = ref.watch(_visibleNotificationsProvider);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: visibleNotifications.isEmpty
+          ? _EmptyState(
+              key: ValueKey<String>('empty-${selectedFilter.name}'),
+              filter: selectedFilter,
+            )
+          : _NotificationsList(
+              key: ValueKey<String>(
+                'list-${selectedFilter.name}-${visibleNotifications.length}',
+              ),
+              notifications: visibleNotifications,
+              onNotificationTap: (notification) {
+                _handleNotificationTap(context, ref, notification);
+              },
+              onNotificationDismissed: (notification) {
+                _deleteNotification(context, ref, notification);
+              },
+            ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Notifications list
+// -----------------------------------------------------------------------------
+
+class _NotificationsList extends StatelessWidget {
+  final List<NotificationModel> notifications;
+  final ValueChanged<NotificationModel> onNotificationTap;
+  final ValueChanged<NotificationModel> onNotificationDismissed;
+
+  const _NotificationsList({
+    super.key,
+    required this.notifications,
+    required this.onNotificationTap,
+    required this.onNotificationDismissed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      itemCount: notifications.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+      itemBuilder: (context, index) {
+        final notification = notifications[index];
+
+        return RepaintBoundary(
+          child: Dismissible(
+            key: ValueKey<String>(
+              notification.id.isNotEmpty
+                  ? notification.id
+                  : '${notification.createdAt.millisecondsSinceEpoch}-$index',
+            ),
+            direction: DismissDirection.endToStart,
+            background: const _DismissBackground(),
+            onDismissed: (_) => onNotificationDismissed(notification),
+            child: _NotificationCard(
+              notification: notification,
+              onTap: () => onNotificationTap(notification),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Dismiss background
+// -----------------------------------------------------------------------------
 
 class _DismissBackground extends StatelessWidget {
   const _DismissBackground();
@@ -252,6 +509,10 @@ class _DismissBackground extends StatelessWidget {
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// Notification card
+// -----------------------------------------------------------------------------
 
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
@@ -382,8 +643,17 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Empty state
+// -----------------------------------------------------------------------------
+
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final _NotificationFilter filter;
+
+  const _EmptyState({
+    super.key,
+    required this.filter,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -400,26 +670,29 @@ class _EmptyState extends StatelessWidget {
                 color: AppColors.primaryBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
+              child: Icon(
+                filter.emptyIcon,
                 size: 46,
                 color: AppColors.primaryBlue,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'No notifications',
+              filter.emptyTitle,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppColors.textDark,
                     fontWeight: FontWeight.w800,
                   ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              "You're all caught up!",
+              filter.emptySubtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textLight,
+                    height: 1.4,
                   ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

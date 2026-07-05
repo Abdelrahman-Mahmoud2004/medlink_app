@@ -34,25 +34,33 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   int? _selectedCardIndex = 0;
   bool _showAddCardForm = false;
+  bool _saveCardForFuture = true;
   bool _isLoading = false;
 
   static const double _walletBalance = 150.0;
 
-  final List<SavedCard> _savedCards = const [
-    SavedCard(
-      id: '1',
-      brand: 'VISA',
-      last4: '4242',
-      expiry: '12/28',
-      isDefault: true,
-    ),
-    SavedCard(
-      id: '2',
-      brand: 'MC',
-      last4: '5588',
-      expiry: '09/27',
-    ),
-  ];
+  late List<SavedCard> _savedCards;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _savedCards = const [
+      SavedCard(
+        id: '1',
+        brand: 'VISA',
+        last4: '4242',
+        expiry: '12/28',
+        isDefault: true,
+      ),
+      SavedCard(
+        id: '2',
+        brand: 'MC',
+        last4: '5588',
+        expiry: '09/27',
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -112,16 +120,33 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
       if (!mounted) return;
 
+      if (_selectedType == PaymentMethodType.card && _showAddCardForm) {
+        _saveNewCardIfNeeded();
+      }
+
       setState(() => _isLoading = false);
+
+      final paymentPayload = {
+        ...widget.bookingData,
+        'total': widget.amount,
+        'paymentMethod': _selectedType.name,
+        'paidAt': _selectedType == PaymentMethodType.cash ? null : DateTime.now(),
+        'paymentStatus': _selectedType == PaymentMethodType.cash
+            ? 'cash_on_visit'
+            : 'paid',
+      };
+
+      if (_selectedType == PaymentMethodType.cash) {
+        context.go(
+          AppRoutes.bookingConfirmation,
+          extra: paymentPayload,
+        );
+        return;
+      }
 
       context.go(
         AppRoutes.paymentSuccess,
-        extra: {
-          ...widget.bookingData,
-          'total': widget.amount,
-          'paymentMethod': _selectedType.name,
-          'paidAt': DateTime.now(),
-        },
+        extra: paymentPayload,
       );
     } catch (error) {
       if (!mounted) return;
@@ -133,6 +158,54 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         isError: true,
       );
     }
+  }
+
+  void _saveNewCardIfNeeded() {
+    if (!_saveCardForFuture) return;
+
+    final digits = _cardNumberController.text.replaceAll(' ', '').trim();
+
+    if (digits.length != 16) return;
+
+    final last4 = digits.substring(digits.length - 4);
+    final brand = _detectCardBrand(digits);
+    final expiry = _expiryController.text.trim();
+
+    final alreadyExists = _savedCards.any(
+      (card) => card.last4 == last4 && card.expiry == expiry,
+    );
+
+    if (alreadyExists) return;
+
+    final newCard = SavedCard(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      brand: brand,
+      last4: last4,
+      expiry: expiry,
+      isDefault: _savedCards.isEmpty,
+    );
+
+    setState(() {
+      _savedCards = [..._savedCards, newCard];
+      _selectedCardIndex = _savedCards.length - 1;
+      _showAddCardForm = false;
+    });
+  }
+
+  String _detectCardBrand(String digits) {
+    if (digits.startsWith('4')) {
+      return 'VISA';
+    }
+
+    if (digits.startsWith('5')) {
+      return 'MC';
+    }
+
+    if (digits.startsWith('34') || digits.startsWith('37')) {
+      return 'AMEX';
+    }
+
+    return 'CARD';
   }
 
   void _showSnackBar(
@@ -179,7 +252,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   @override
   Widget build(BuildContext context) {
     final payLabel = _selectedType == PaymentMethodType.cash
-        ? 'Confirm Cash Payment'
+        ? 'Confirm Cash on Visit'
         : 'Pay ${_money(widget.amount)}';
 
     return Scaffold(
@@ -228,6 +301,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                               : () {
                                   setState(() {
                                     _selectedType = type;
+
+                                    if (type != PaymentMethodType.card) {
+                                      _showAddCardForm = false;
+                                    }
                                   });
                                 },
                         ),
@@ -285,22 +362,23 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ..._savedCards.asMap().entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: _SavedCardTile(
-                  card: entry.value,
-                  isSelected:
-                      _selectedCardIndex == entry.key && !_showAddCardForm,
-                  onTap: () {
-                    setState(() {
-                      _selectedCardIndex = entry.key;
-                      _showAddCardForm = false;
-                    });
-                  },
+        if (_savedCards.isNotEmpty)
+          ..._savedCards.asMap().entries.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _SavedCardTile(
+                    card: entry.value,
+                    isSelected:
+                        _selectedCardIndex == entry.key && !_showAddCardForm,
+                    onTap: () {
+                      setState(() {
+                        _selectedCardIndex = entry.key;
+                        _showAddCardForm = false;
+                      });
+                    },
+                  ),
                 ),
               ),
-            ),
         TextButton.icon(
           onPressed: _isLoading
               ? null
@@ -330,6 +408,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             nameController: _cardNameController,
             expiryController: _expiryController,
             cvvController: _cvvController,
+            saveCard: _saveCardForFuture,
+            onSaveCardChanged: (value) {
+              setState(() => _saveCardForFuture = value);
+            },
           ),
         ],
       ],
@@ -459,14 +541,22 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.textLight,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.warningOrange.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: const Icon(
+              Icons.payments_rounded,
+              color: AppColors.warningOrange,
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              'Pay the nurse directly in cash when the visit is complete.',
+              'You can confirm the booking now and pay the nurse directly in cash after the visit.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textLight,
                     height: 1.4,
@@ -557,7 +647,7 @@ class _SecurityNotice extends StatelessWidget {
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              'Your payment information is encrypted and secure.',
+              'Your payment information is encrypted and secure. Saved cards store only display data in this demo.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.primaryBlue,
                     height: 1.4,
@@ -597,47 +687,111 @@ class _MethodTile extends StatelessWidget {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.08) :  AppColors.white,
+            color: isSelected ? color.withValues(alpha: 0.08) : AppColors.white,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
               color: isSelected ? color : AppColors.borderGray,
               width: isSelected ? 2 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? color.withValues(alpha: 0.18)
+                    : Colors.black.withValues(alpha: 0.025),
+                blurRadius: isSelected ? 18 : 10,
+                offset: Offset(0, isSelected ? 9 : 5),
+              ),
+            ],
           ),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                width: isSelected ? 48 : 44,
+                height: isSelected ? 48 : 44,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: color.withValues(alpha: isSelected ? 0.16 : 0.10),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
-                child: Icon(
-                  type.icon,
-                  color: color,
-                  size: 24,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutBack,
+                  scale: isSelected ? 1.08 : 1.0,
+                  child: Icon(
+                    type.icon,
+                    color: color,
+                    size: isSelected ? 26 : 24,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
-                child: Text(
-                  type.displayName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      type.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDark,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _subtitleFor(type),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textLight,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ],
                 ),
               ),
-              Icon(
-                isSelected ? Icons.check_circle : Icons.circle_outlined,
-                color: isSelected ? color : AppColors.borderGray,
+              const SizedBox(width: AppSpacing.md),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isSelected ? color : AppColors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? color : AppColors.borderGray,
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.white,
+                        size: 18,
+                      )
+                    : null,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _subtitleFor(PaymentMethodType type) {
+    switch (type) {
+      case PaymentMethodType.card:
+        return 'Pay securely using your saved card.';
+      case PaymentMethodType.wallet:
+        return 'Use your MedLink wallet balance.';
+      case PaymentMethodType.mobileWallet:
+        return 'Pay using a mobile wallet number.';
+      case PaymentMethodType.cash:
+        return 'Pay directly after the visit.';
+    }
   }
 }
 
@@ -654,9 +808,9 @@ class _SavedCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brand = card.brand.trim().isEmpty ? 'CARD' : card.brand;
-    final last4 = card.last4.trim().isEmpty ? '0000' : card.last4;
-    final expiry = card.expiry.trim().isEmpty ? '--/--' : card.expiry;
+    final brand = card.displayBrand;
+    final last4 = card.displayLast4;
+    final expiry = card.displayExpiry;
 
     return GestureDetector(
       onTap: onTap,
@@ -683,7 +837,7 @@ class _SavedCardTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.xs),
               ),
               child: Text(
-                brand.toUpperCase(),
+                brand,
                 style: const TextStyle(
                   color: AppColors.white,
                   fontSize: 10,
@@ -729,6 +883,8 @@ class _NewCardForm extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController expiryController;
   final TextEditingController cvvController;
+  final bool saveCard;
+  final ValueChanged<bool> onSaveCardChanged;
 
   const _NewCardForm({
     required this.formKey,
@@ -736,6 +892,8 @@ class _NewCardForm extends StatelessWidget {
     required this.nameController,
     required this.expiryController,
     required this.cvvController,
+    required this.saveCard,
+    required this.onSaveCardChanged,
   });
 
   @override
@@ -832,15 +990,41 @@ class _NewCardForm extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.bgGray,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.borderGray),
+            ),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: saveCard,
+                  activeColor: AppColors.primaryBlue,
+                  onChanged: (value) {
+                    onSaveCardChanged(value ?? false);
+                  },
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Save this card for future payments',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
-
-// -----------------------------------------------------------------------------
-// Formatters
-// -----------------------------------------------------------------------------
 
 class _CardNumberFormatter extends TextInputFormatter {
   @override

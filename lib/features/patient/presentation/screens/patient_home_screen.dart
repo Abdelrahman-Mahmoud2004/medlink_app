@@ -101,14 +101,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     ];
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature feature coming soon'),
-      ),
-    );
-  }
-
   void _openNurseProfile(NurseModel nurse) {
     context.push(
       AppRoutes.nurseProfile,
@@ -131,19 +123,35 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   }
 
   void _openBookings() {
-    context.push(AppRoutes.patientBookings);
+    context.go(AppRoutes.patientBookings);
   }
 
   void _openWallet() {
-    context.push(AppRoutes.patientWallet);
-  }
-
-  void _openProfile() {
-    context.push(AppRoutes.patientProfile);
+    context.go(AppRoutes.patientWallet);
   }
 
   void _openMessages() {
-    context.push(AppRoutes.patientMessages);
+    context.go(AppRoutes.patientMessages);
+  }
+
+  void _openProfile() {
+    context.go(AppRoutes.patientProfile);
+  }
+
+  void _openNotifications() {
+    context.push(AppRoutes.notificationsCenter);
+  }
+
+  void _openMedications() {
+    context.push(AppRoutes.medicationSchedule);
+  }
+
+  void _openHealthRecords() {
+    context.push(AppRoutes.medicalHistory);
+  }
+
+  void _openEmergencySos() {
+    context.push(AppRoutes.emergencySos);
   }
 
   @override
@@ -181,15 +189,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                   padding: const EdgeInsets.only(right: AppSpacing.lg),
                   child: Center(
                     child: GestureDetector(
-                      onTap: () => _showComingSoon('Notifications'),
+                      onTap: _openNotifications,
                       child: Stack(
                         children: [
                           Container(
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primaryBlue.withValues(alpha: 0.10),
+                              color: AppColors.primaryBlue.withValues(
+                                alpha: 0.10,
+                              ),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -206,8 +215,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                               height: 9,
                               decoration: BoxDecoration(
                                 color: AppColors.errorRed,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.full),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.full,
+                                ),
                                 border: Border.all(
                                   color: AppColors.white,
                                   width: 1.5,
@@ -233,7 +243,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                   children: [
                     _buildSearchBar(context),
                     const SizedBox(height: AppSpacing.xl),
-                    _buildQuickActions(context),
+                    _buildQuickActions(),
                     const SizedBox(height: AppSpacing.xl),
                     _buildUpcomingSection(context),
                     const SizedBox(height: AppSpacing.xl),
@@ -246,7 +256,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(context),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -297,7 +307,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions() {
     return Row(
       children: [
         _QuickActionButton(
@@ -310,19 +320,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           icon: Icons.medication_rounded,
           label: 'Medications',
           color: AppColors.successGreen,
-          onTap: () => _showComingSoon('Medications'),
+          onTap: _openMedications,
         ),
         _QuickActionButton(
           icon: Icons.monitor_heart_rounded,
           label: 'Health Records',
           color: const Color(0xFF8B5CF6),
-          onTap: () => _showComingSoon('Health Records'),
+          onTap: _openHealthRecords,
         ),
         _QuickActionButton(
           icon: Icons.sos_rounded,
           label: 'Emergency SOS',
           color: AppColors.errorRed,
-          onTap: () => _showComingSoon('Emergency SOS'),
+          onTap: _openEmergencySos,
         ),
       ],
     );
@@ -343,8 +353,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: upcomingBookings.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.lg),
+            separatorBuilder: (_, __) => const SizedBox(
+              height: AppSpacing.lg,
+            ),
             itemBuilder: (context, index) {
               final booking = upcomingBookings[index];
 
@@ -357,7 +368,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
         else
           Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.xl,
+              ),
               child: Column(
                 children: [
                   Icon(
@@ -399,7 +412,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: recommendedNurses.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
+          separatorBuilder: (_, __) => const SizedBox(
+            height: AppSpacing.lg,
+          ),
           itemBuilder: (context, index) {
             final nurse = recommendedNurses[index];
 
@@ -414,7 +429,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
     );
   }
 
-  Widget _buildBottomNavBar(BuildContext context) {
+  Widget _buildBottomNavBar() {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.white,

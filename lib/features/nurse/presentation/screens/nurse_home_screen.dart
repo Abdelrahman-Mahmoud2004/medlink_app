@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../config/theme.dart';
 import '../../../../config/routes.dart';
 import '../../../../core/utils/date_formatters.dart';
@@ -24,7 +25,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
     super.initState();
     _activeRequests = List.of(NurseMockData.activeRequests);
     _recentEarnings = NurseMockData.earnings
-        .where((e) => e.status == EarningStatus.completed)
+        .where((earning) => earning.status == EarningStatus.completed)
         .take(3)
         .toList();
   }
@@ -36,7 +37,10 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
   }
 
   void _handleAccept(RequestModel request) {
-    setState(() => _activeRequests.removeWhere((r) => r.id == request.id));
+    setState(() {
+      _activeRequests.removeWhere((item) => item.id == request.id);
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("Accepted ${request.patientName}'s request"),
@@ -46,9 +50,14 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
   }
 
   void _handleDecline(RequestModel request) {
-    setState(() => _activeRequests.removeWhere((r) => r.id == request.id));
+    setState(() {
+      _activeRequests.removeWhere((item) => item.id == request.id);
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Declined ${request.patientName}'s request")),
+      SnackBar(
+        content: Text("Declined ${request.patientName}'s request"),
+      ),
     );
   }
 
@@ -67,18 +76,17 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
         _showComingSoon('Messages');
         break;
       case 4:
-        _pushTab(4, AppRoutes.profile);
+        _showComingSoon('Profile');
         break;
     }
   }
 
-  /// Pushes [route] and, once the user comes back, resets the nav
-  /// selection to Home — since this uses push/pop rather than persistent
-  /// tabs, the highlighted item should reflect where you actually are.
   void _pushTab(int index, String route) {
     setState(() => _selectedNavIndex = index);
+
     context.push(route).then((_) {
-      if (mounted) setState(() => _selectedNavIndex = 0);
+      if (!mounted) return;
+      setState(() => _selectedNavIndex = 0);
     });
   }
 
@@ -128,10 +136,9 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
         children: [
           Text(
             'Welcome back, Fatima',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.textLight),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textLight,
+                ),
           ),
           Text(
             'MedLink Provider',
@@ -151,8 +158,11 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.notifications_outlined,
-                      color: AppColors.primaryBlue, size: 28),
+                  const Icon(
+                    Icons.notifications_outlined,
+                    color: AppColors.primaryBlue,
+                    size: 28,
+                  ),
                   Positioned(
                     top: -2,
                     right: -2,
@@ -183,7 +193,6 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
           children: [
             Expanded(
               child: _StatBox(
-                // Was hardcoded '142' — now actually reflects the data.
                 value: '${NurseMockData.completedVisits}',
                 label: 'Completed Visits',
                 icon: Icons.check_circle_outline,
@@ -221,12 +230,16 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _activeRequests.length,
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
-            itemBuilder: (context, index) => _RequestCard(
-              request: _activeRequests[index],
-              onAccept: () => _handleAccept(_activeRequests[index]),
-              onDecline: () => _handleDecline(_activeRequests[index]),
-              onStartTravel: () => _showComingSoon('Navigation'),
-            ),
+            itemBuilder: (context, index) {
+              final request = _activeRequests[index];
+
+              return _RequestCard(
+                request: request,
+                onAccept: () => _handleAccept(request),
+                onDecline: () => _handleDecline(request),
+                onStartTravel: () => _showComingSoon('Navigation'),
+              );
+            },
           ),
       ],
     );
@@ -242,22 +255,22 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
           onAction: () => context.push(AppRoutes.nurseWallet),
         ),
         const SizedBox(height: AppSpacing.lg),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _recentEarnings.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
-          itemBuilder: (context, index) =>
-              _EarningItem(earning: _recentEarnings[index]),
-        ),
+        if (_recentEarnings.isEmpty)
+          const _EmptyNotice(text: 'No recent visits yet')
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _recentEarnings.length,
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
+            itemBuilder: (context, index) {
+              return _EarningItem(earning: _recentEarnings[index]);
+            },
+          ),
       ],
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Private sub-widgets
-// ---------------------------------------------------------------------------
 
 class _DailyEarningsCard extends StatelessWidget {
   final double amount;
@@ -291,10 +304,9 @@ class _DailyEarningsCard extends StatelessWidget {
             children: [
               Text(
                 'Daily Earnings',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.white.withValues(alpha: 0.9)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.white.withValues(alpha: 0.9),
+                    ),
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -313,8 +325,11 @@ class _DailyEarningsCard extends StatelessWidget {
               color: AppColors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
-            child: const Icon(Icons.trending_up,
-                color: AppColors.white, size: 28),
+            child: const Icon(
+              Icons.trending_up,
+              color: AppColors.white,
+              size: 28,
+            ),
           ),
         ],
       ),
@@ -386,19 +401,17 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
         TextButton(
           onPressed: onAction,
           child: Text(
             actionLabel,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.primaryBlue),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.primaryBlue,
+                ),
           ),
         ),
       ],
@@ -423,10 +436,9 @@ class _EmptyNotice extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
-            ?.copyWith(color: AppColors.textLight),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textLight,
+            ),
       ),
     );
   }
@@ -445,12 +457,15 @@ class _RequestCard extends StatelessWidget {
     required this.onStartTravel,
   });
 
-  Color get _statusColor => switch (request.status) {
-        RequestStatus.active => AppColors.successGreen,
-        RequestStatus.scheduled => AppColors.warningOrange,
-        RequestStatus.completed => AppColors.primaryBlue,
-        RequestStatus.cancelled => AppColors.errorRed,
-      };
+  Color get _statusColor {
+    return switch (request.status) {
+      RequestStatus.active => AppColors.successGreen,
+      RequestStatus.scheduled => AppColors.warningOrange,
+      RequestStatus.completed => AppColors.primaryBlue,
+      RequestStatus.cancelled => AppColors.errorRed,
+      RequestStatus.unknown => AppColors.textLight,
+    };
+  }
 
   Widget _buildActions() {
     return switch (request.status) {
@@ -473,7 +488,9 @@ class _RequestCard extends StatelessWidget {
         ),
       RequestStatus.scheduled => FilledButton(
           onPressed: onStartTravel,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryBlue,
+          ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -484,7 +501,8 @@ class _RequestCard extends StatelessWidget {
           ),
         ),
       RequestStatus.completed ||
-      RequestStatus.cancelled =>
+      RequestStatus.cancelled ||
+      RequestStatus.unknown =>
         const SizedBox.shrink(),
     };
   }
@@ -509,48 +527,38 @@ class _RequestCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.lightBlue,
+                child: ClipOval(
+                  child: Image.network(
+                    request.patientImage,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.person),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: AppColors.lightBlue,
-                      child: ClipOval(
-                        child: Image.network(
-                          request.patientImage,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.person),
-                        ),
-                      ),
+                    Text(
+                      request.patientName,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            request.patientName,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      request.specialty,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textLight,
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            request.specialty,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: AppColors.textLight),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),
@@ -643,11 +651,25 @@ class _EarningItem extends StatelessWidget {
 
   const _EarningItem({required this.earning});
 
-  Color get _statusColor => switch (earning.status) {
-        EarningStatus.completed => AppColors.successGreen,
-        EarningStatus.pending => AppColors.warningOrange,
-        EarningStatus.withdrawn => AppColors.primaryBlue,
-      };
+  Color get _statusColor {
+    return switch (earning.status) {
+      EarningStatus.completed => AppColors.successGreen,
+      EarningStatus.pending => AppColors.warningOrange,
+      EarningStatus.withdrawn => AppColors.primaryBlue,
+      EarningStatus.cancelled => AppColors.errorRed,
+      EarningStatus.unknown => AppColors.textLight,
+    };
+  }
+
+  Color get _amountColor {
+    return switch (earning.status) {
+      EarningStatus.completed => AppColors.successGreen,
+      EarningStatus.withdrawn => AppColors.successGreen,
+      EarningStatus.pending => AppColors.warningOrange,
+      EarningStatus.cancelled => AppColors.errorRed,
+      EarningStatus.unknown => AppColors.textLight,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -667,18 +689,16 @@ class _EarningItem extends StatelessWidget {
               children: [
                 Text(
                   earning.description,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   AppDateFormatters.relative(earning.date),
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.textLight),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textLight,
+                      ),
                 ),
               ],
             ),
@@ -690,7 +710,7 @@ class _EarningItem extends StatelessWidget {
                 'EGP ${earning.netAmount.toStringAsFixed(0)}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: AppColors.successGreen,
+                      color: _amountColor,
                     ),
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -704,8 +724,6 @@ class _EarningItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
-                  // Was hardcoded 'Completed' text regardless of the real
-                  // status — now reflects earning.status honestly.
                   earning.status.label,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontSize: 10,
@@ -730,11 +748,6 @@ class _NurseBottomNavBar extends StatelessWidget {
     required this.onTap,
   });
 
-  // Icons.calendar_today_filled and Icons.person_filled don't exist in
-  // Flutter's Icons class (only a handful of icons like home_filled have a
-  // "_filled" alias) — that was a compile error in the original. Using the
-  // base icon (already filled-style) for active + "_outlined" for inactive
-  // is the safe, well-established pattern used elsewhere in this codebase.
   static const _items = [
     (icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
     (
@@ -770,14 +783,16 @@ class _NurseBottomNavBar extends StatelessWidget {
         selectedItemColor: AppColors.primaryBlue,
         unselectedItemColor: AppColors.textLight,
         onTap: onTap,
-        items: _items
-            .map((item) => BottomNavigationBarItem(
-                  icon: Icon(item.icon),
-                  activeIcon:
-                      Icon(item.activeIcon, color: AppColors.primaryBlue),
-                  label: item.label,
-                ))
-            .toList(),
+        items: _items.map((item) {
+          return BottomNavigationBarItem(
+            icon: Icon(item.icon),
+            activeIcon: Icon(
+              item.activeIcon,
+              color: AppColors.primaryBlue,
+            ),
+            label: item.label,
+          );
+        }).toList(),
       ),
     );
   }

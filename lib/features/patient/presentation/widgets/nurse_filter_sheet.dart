@@ -1,4 +1,6 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../config/theme.dart';
 import '../../../../core/widgets/custom_button.dart';
@@ -38,16 +40,16 @@ class _NurseFilterSheetState extends State<NurseFilterSheet> {
   void initState() {
     super.initState();
 
-    final initial = widget.initialFilters;
+    final initial = widget.initialFilters ?? NurseFilters.defaults();
 
-    _priceRange = initial?.priceRange ?? NurseFilters.defaultPriceRange;
-    _minRating = initial?.minRating ?? NurseFilters.defaultMinRating;
-    _selectedSpecialties = List<String>.from(initial?.specialties ?? const []);
-    _availableNow = initial?.availableNow ?? false;
-    _certified = initial?.certified ?? false;
+    _priceRange = initial.priceRange;
+    _minRating = initial.minRating;
+    _selectedSpecialties = List<String>.from(initial.specialties);
+    _availableNow = initial.availableNow;
+    _certified = initial.certified;
   }
 
-  bool get _hasChanges {
+  bool get _hasActiveFilters {
     return _availableNow ||
         _certified ||
         _selectedSpecialties.isNotEmpty ||
@@ -57,26 +59,27 @@ class _NurseFilterSheetState extends State<NurseFilterSheet> {
   }
 
   void _handleApply() {
-    widget.onApply(
-      NurseFilters(
-        priceRange: _priceRange,
-        minRating: _minRating,
-        specialties: List.unmodifiable(_selectedSpecialties),
-        availableNow: _availableNow,
-        certified: _certified,
-      ),
+    final filters = NurseFilters(
+      priceRange: _priceRange,
+      minRating: _minRating,
+      specialties: List.unmodifiable(_selectedSpecialties),
+      availableNow: _availableNow,
+      certified: _certified,
     );
 
-    Navigator.pop(context);
+    widget.onApply(filters);
+    context.pop();
   }
 
   void _handleReset() {
+    final defaults = NurseFilters.defaults();
+
     setState(() {
-      _priceRange = NurseFilters.defaultPriceRange;
-      _minRating = NurseFilters.defaultMinRating;
-      _selectedSpecialties = [];
-      _availableNow = false;
-      _certified = false;
+      _priceRange = defaults.priceRange;
+      _minRating = defaults.minRating;
+      _selectedSpecialties = List<String>.from(defaults.specialties);
+      _availableNow = defaults.availableNow;
+      _certified = defaults.certified;
     });
   }
 
@@ -193,7 +196,7 @@ class _NurseFilterSheetState extends State<NurseFilterSheet> {
         ),
         IconButton(
           icon: const Icon(Icons.close_rounded),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
       ],
     );
@@ -301,8 +304,7 @@ class _NurseFilterSheetState extends State<NurseFilterSheet> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color:
-                              AppColors.primaryBlue.withValues(alpha: 0.14),
+                          color: AppColors.primaryBlue.withValues(alpha: 0.14),
                           blurRadius: 14,
                           offset: const Offset(0, 7),
                         ),
@@ -377,7 +379,7 @@ class _NurseFilterSheetState extends State<NurseFilterSheet> {
         const SizedBox(width: AppSpacing.lg),
         Expanded(
           child: CustomButton(
-            label: _hasChanges ? 'Apply Filters' : 'Apply',
+            label: _hasActiveFilters ? 'Apply Filters' : 'Apply',
             onPressed: _handleApply,
           ),
         ),
@@ -541,7 +543,7 @@ class _FilterSwitchTile extends StatelessWidget {
 // Filter model
 // -----------------------------------------------------------------------------
 
-class NurseFilters {
+class NurseFilters extends Equatable {
   static const double minPrice = 0;
   static const double maxPrice = 1000;
 
@@ -562,6 +564,16 @@ class NurseFilters {
     required this.certified,
   });
 
+  factory NurseFilters.defaults() {
+    return const NurseFilters(
+      priceRange: defaultPriceRange,
+      minRating: defaultMinRating,
+      specialties: [],
+      availableNow: false,
+      certified: false,
+    );
+  }
+
   bool get hasActiveFilters {
     return availableNow ||
         certified ||
@@ -581,9 +593,118 @@ class NurseFilters {
     return NurseFilters(
       priceRange: priceRange ?? this.priceRange,
       minRating: minRating ?? this.minRating,
-      specialties: specialties ?? this.specialties,
+      specialties: List.unmodifiable(specialties ?? this.specialties),
       availableNow: availableNow ?? this.availableNow,
       certified: certified ?? this.certified,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'min_price': priceRange.start,
+      'max_price': priceRange.end,
+      'min_rating': minRating,
+      'specialties': specialties,
+      'available_now': availableNow,
+      'certified': certified,
+    };
+  }
+
+  factory NurseFilters.fromJson(Map<String, dynamic> json) {
+    final start = _toDouble(
+      json['min_price'] ?? json['minPrice'],
+      defaultPriceRange.start,
+    );
+
+    final end = _toDouble(
+      json['max_price'] ?? json['maxPrice'],
+      defaultPriceRange.end,
+    );
+
+    return NurseFilters(
+      priceRange: _normalizePriceRange(start, end),
+      minRating: _normalizeRating(
+        _toDouble(
+          json['min_rating'] ?? json['minRating'],
+          defaultMinRating,
+        ),
+      ),
+      specialties: _toStringList(json['specialties']),
+      availableNow: _toBool(
+        json['available_now'] ?? json['availableNow'],
+      ),
+      certified: _toBool(json['certified']),
+    );
+  }
+
+  static RangeValues _normalizePriceRange(double start, double end) {
+    final normalizedStart = start.clamp(minPrice, maxPrice).toDouble();
+    final normalizedEnd = end.clamp(minPrice, maxPrice).toDouble();
+
+    if (normalizedStart <= normalizedEnd) {
+      return RangeValues(normalizedStart, normalizedEnd);
+    }
+
+    return RangeValues(normalizedEnd, normalizedStart);
+  }
+
+  static double _normalizeRating(double value) {
+    return value.clamp(0.0, 5.0).toDouble();
+  }
+
+  static double _toDouble(Object? value, double fallback) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(value.trim()) ?? fallback;
+    }
+
+    return fallback;
+  }
+
+  static bool _toBool(Object? value) {
+    if (value is bool) {
+      return value;
+    }
+
+    if (value is num) {
+      return value != 0;
+    }
+
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'y';
+    }
+
+    return false;
+  }
+
+  static List<String> _toStringList(Object? value) {
+    if (value is List) {
+      return List.unmodifiable(
+        value
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .toList(),
+      );
+    }
+
+    return const [];
+  }
+
+  @override
+  List<Object?> get props => [
+        priceRange.start,
+        priceRange.end,
+        minRating,
+        specialties,
+        availableNow,
+        certified,
+      ];
 }
