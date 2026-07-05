@@ -182,7 +182,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                       const SizedBox(height: AppSpacing.xl),
 
                       DropdownButtonFormField<String>(
-                        value: _category,
+                        initialValue: _category,
                         decoration: const InputDecoration(
                           labelText: 'Category',
                           prefixIcon: Icon(Icons.category_outlined),
@@ -202,7 +202,7 @@ class _SupportTicketScreenState extends State<SupportTicketScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       DropdownButtonFormField<String>(
-                        value: _priority,
+                        initialValue: _priority,
                         decoration: InputDecoration(
                           labelText: 'Priority',
                           prefixIcon: Icon(

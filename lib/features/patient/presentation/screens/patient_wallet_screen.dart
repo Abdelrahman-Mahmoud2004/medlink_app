@@ -149,7 +149,7 @@ class PatientWalletScreen extends StatelessWidget {
 // -----------------------------------------------------------------------------
 
 final List<_WalletTransaction> _mockTransactions = [
-  _WalletTransaction(
+  const _WalletTransaction(
     id: '1',
     title: 'Booking Payment',
     subtitle: 'Post-Surgery Care with Sara Ahmed',
@@ -157,7 +157,7 @@ final List<_WalletTransaction> _mockTransactions = [
     date: 'Today, 10:35 AM',
     type: _WalletTransactionType.payment,
   ),
-  _WalletTransaction(
+  const _WalletTransaction(
     id: '2',
     title: 'Refund',
     subtitle: 'Cancelled booking refund',
@@ -165,7 +165,7 @@ final List<_WalletTransaction> _mockTransactions = [
     date: 'Yesterday, 04:10 PM',
     type: _WalletTransactionType.refund,
   ),
-  _WalletTransaction(
+  const _WalletTransaction(
     id: '3',
     title: 'Cashback Reward',
     subtitle: 'MedLink loyalty cashback',
@@ -173,7 +173,7 @@ final List<_WalletTransaction> _mockTransactions = [
     date: 'Jun 20, 01:45 PM',
     type: _WalletTransactionType.cashback,
   ),
-  _WalletTransaction(
+  const _WalletTransaction(
     id: '4',
     title: 'Wallet Top Up',
     subtitle: 'Added balance using card',

@@ -171,7 +171,7 @@ class _AddEditFamilyMemberScreenState extends State<AddEditFamilyMemberScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       DropdownButtonFormField<String>(
-                        value: _relationships.contains(_relationship)
+                        initialValue: _relationships.contains(_relationship)
                             ? _relationship
                             : 'Other',
                         decoration: const InputDecoration(
@@ -207,7 +207,7 @@ class _AddEditFamilyMemberScreenState extends State<AddEditFamilyMemberScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       DropdownButtonFormField<String>(
-                        value:
+                        initialValue:
                             _bloodTypes.contains(_bloodType) ? _bloodType : 'Unknown',
                         decoration: const InputDecoration(
                           labelText: 'Blood Type',

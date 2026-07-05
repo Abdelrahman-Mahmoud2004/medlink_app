@@ -231,7 +231,7 @@ class _AddEditMedicationScreenState extends State<AddEditMedicationScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       DropdownButtonFormField<String>(
-                        value: _frequencies.contains(_frequency)
+                        initialValue: _frequencies.contains(_frequency)
                             ? _frequency
                             : 'Once daily',
                         decoration: const InputDecoration(

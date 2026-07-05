@@ -333,7 +333,7 @@ class _NurseProfileScreenState extends State<NurseProfileScreen>
                   (spec) => Chip(
                     label: Text(
                       spec,
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.primaryBlue,
                         fontWeight: FontWeight.w600,
                       ),

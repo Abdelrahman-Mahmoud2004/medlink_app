@@ -103,7 +103,7 @@ class PatientProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: AppSpacing.xl),
 
-            _SectionTitle(title: 'Account'),
+            const _SectionTitle(title: 'Account'),
 
             const SizedBox(height: AppSpacing.md),
 
@@ -140,7 +140,7 @@ class PatientProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: AppSpacing.xl),
 
-            _SectionTitle(title: 'App'),
+            const _SectionTitle(title: 'App'),
 
             const SizedBox(height: AppSpacing.md),
 
@@ -174,7 +174,7 @@ class PatientProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: AppSpacing.xl),
 
-            _SectionTitle(title: 'Support'),
+            const _SectionTitle(title: 'Support'),
 
             const SizedBox(height: AppSpacing.md),
 
