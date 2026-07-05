@@ -1,0 +1,81 @@
+name: medlink_app
+description: Professional Healthcare Mobile App
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management (Riverpod Architecture)
+  flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.3.0
+  
+  # Navigation
+  go_router: ^12.0.0
+  
+  # HTTP & Networking
+  dio: ^5.7.0
+  
+  # Local Storage
+  shared_preferences: ^2.2.3
+  hive: ^2.2.0
+  hive_flutter: ^1.1.0
+  
+  # UI & Design
+  flutter_svg: ^2.0.0
+  cached_network_image: ^3.3.0
+  smooth_page_indicator: ^1.1.0
+  
+  # Utilities
+  intl: ^0.20.2
+  logger: ^2.1.0
+  equatable: ^2.0.5
+  freezed_annotation: ^2.4.1
+  
+  # Validation & Localization
+  flutter_localizations:
+    sdk: flutter
+  table_calendar: ^3.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.0
+  freezed: ^2.4.1
+  riverpod_generator: ^2.3.0
+  hive_generator: ^2.0.1 # 💡 تم إضافة المولد المفقود لإنتاج الـ Adapters بدون مشاكل
+
+flutter:
+  uses-material-design: true
+  
+  # 💡 تم ضبط المسافات باحترافية (Indentation) لتجنب الـ YAML Errors عند تفعيلها
+ # assets:
+  #  - assets/images/
+  # - assets/icons/
+  # - assets/animations/
+  
+  fonts:
+    # الخط الإنجليزي الأساسي
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+          
+    # 💡 تم إضافة خط Cairo لضمان واجهة مستخدم عربية احترافية ومتناسقة في مصر
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-SemiBold.ttf
+          weight: 600
