@@ -21,13 +21,16 @@ import '../features/auth/presentation/screens/reset_password_screen.dart';
 import '../features/auth/presentation/screens/language_selection_screen.dart';
 import '../features/auth/presentation/screens/permissions_screen.dart';
 import '../features/auth/presentation/screens/nurse_verification_screen.dart';
+import '../features/auth/presentation/screens/session_expired_screen.dart';
+
+import '../core/presentation/screens/no_internet_screen.dart';
+import '../core/presentation/screens/error_retry_screen.dart';
 
 import '../features/nurse/presentation/screens/earnings_analytics_screen.dart';
 import '../features/nurse/presentation/screens/my_schedule_screen.dart';
 import '../features/nurse/presentation/screens/nurse_home_screen.dart';
 import '../features/nurse/presentation/screens/vital_signs_screen.dart';
 import '../features/nurse/presentation/screens/wallet_screen.dart';
-
 import '../features/nurse/presentation/screens/new_requests_screen.dart';
 import '../features/nurse/presentation/screens/request_details_screen.dart';
 import '../features/nurse/presentation/screens/gps_navigation_screen.dart';
@@ -89,6 +92,9 @@ import '../features/patient/presentation/screens/patient_settings_screen.dart';
 import '../features/patient/presentation/screens/patient_wallet_screen.dart';
 import '../features/patient/presentation/screens/payment_method_screen.dart';
 import '../features/patient/presentation/screens/payment_success_screen.dart';
+import '../features/patient/presentation/screens/payment_result_screen.dart';
+import '../features/patient/presentation/screens/cancel_booking_screen.dart';
+import '../features/patient/presentation/screens/reschedule_booking_screen.dart';
 import '../features/patient/presentation/screens/personal_information_screen.dart';
 import '../features/patient/presentation/screens/rating_review_screen.dart';
 import '../features/patient/presentation/screens/reviews_full_list_screen.dart';
@@ -96,6 +102,9 @@ import '../features/patient/presentation/screens/select_address_screen.dart';
 import '../features/patient/presentation/screens/select_datetime_screen.dart';
 import '../features/patient/presentation/screens/support_ticket_screen.dart';
 import '../features/patient/presentation/screens/terms_privacy_screen.dart';
+
+import '../features/shared/presentation/screens/delete_account_screen.dart';
+import '../features/shared/presentation/screens/support_admin_chat_screen.dart';
 
 final class AppRoutes {
   AppRoutes._();
@@ -118,6 +127,14 @@ final class AppRoutes {
   static const String language = '/language';
   static const String permissions = '/permissions';
   static const String nurseVerification = '/nurse-verification';
+  static const String sessionExpired = '/session-expired';
+
+  // ---------------------------------------------------------------------------
+  // Global State Routes
+  // ---------------------------------------------------------------------------
+
+  static const String noInternet = '/no-internet';
+  static const String errorRetry = '/error-retry';
 
   // ---------------------------------------------------------------------------
   // Patient Main Routes
@@ -132,7 +149,7 @@ final class AppRoutes {
   static const String patientActiveVisit = '/patient/active-visit';
 
   /// Backward compatibility for old patient-side calls.
-  /// If any old patient code uses AppRoutes.activeVisit, it will still work.
+  /// If old patient code uses AppRoutes.activeVisit, it will still work.
   static const String activeVisit = patientActiveVisit;
 
   // ---------------------------------------------------------------------------
@@ -149,6 +166,9 @@ final class AppRoutes {
   static const String bookingDetails = '/booking-details';
   static const String bookingHistory = '/booking-history';
   static const String detailedInvoice = '/detailed-invoice';
+
+  static const String cancelBooking = '/patient/cancel-booking';
+  static const String rescheduleBooking = '/patient/reschedule-booking';
 
   // ---------------------------------------------------------------------------
   // Patient Profile / Account
@@ -232,6 +252,9 @@ final class AppRoutes {
 
   static const String settings = '/settings';
   static const String profile = '/profile';
+
+  static const String deleteAccount = '/delete-account';
+  static const String supportAdminChat = '/support/admin-chat';
 
   // ---------------------------------------------------------------------------
   // Optional Payment States
@@ -344,6 +367,34 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppRoutes.nurseVerification,
       builder: (context, state) => const NurseVerificationScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.sessionExpired,
+      builder: (context, state) => const SessionExpiredScreen(),
+    ),
+
+    // -------------------------------------------------------------------------
+    // Global State Routes
+    // -------------------------------------------------------------------------
+
+    GoRoute(
+      path: AppRoutes.noInternet,
+      builder: (context, state) => const NoInternetScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.errorRetry,
+      builder: (context, state) {
+        final data = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : const <String, dynamic>{};
+
+        return ErrorRetryScreen(
+          title: data['title']?.toString(),
+          message: data['message']?.toString(),
+        );
+      },
     ),
 
     // -------------------------------------------------------------------------
@@ -466,6 +517,34 @@ final GoRouter router = GoRouter(
     ),
 
     GoRoute(
+      path: AppRoutes.bookingPaymentSuccess,
+      builder: (context, state) => const PaymentResultScreen(
+        type: PaymentResultType.success,
+      ),
+    ),
+
+    GoRoute(
+      path: AppRoutes.bookingPaymentFailed,
+      builder: (context, state) => const PaymentResultScreen(
+        type: PaymentResultType.failed,
+      ),
+    ),
+
+    GoRoute(
+      path: AppRoutes.bookingPaymentCancelled,
+      builder: (context, state) => const PaymentResultScreen(
+        type: PaymentResultType.cancelled,
+      ),
+    ),
+
+    GoRoute(
+      path: AppRoutes.bookingPaymentRefunded,
+      builder: (context, state) => const PaymentResultScreen(
+        type: PaymentResultType.refunded,
+      ),
+    ),
+
+    GoRoute(
       path: AppRoutes.bookingConfirmation,
       builder: (context, state) {
         final data = _extractDynamicMap(state.extra);
@@ -496,6 +575,16 @@ final GoRouter router = GoRouter(
           booking: booking,
         );
       },
+    ),
+
+    GoRoute(
+      path: AppRoutes.cancelBooking,
+      builder: (context, state) => const CancelBookingScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.rescheduleBooking,
+      builder: (context, state) => const RescheduleBookingScreen(),
     ),
 
     GoRoute(
@@ -681,6 +770,20 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppRoutes.aboutApp,
       builder: (context, state) => const AboutAppScreen(),
+    ),
+
+    // -------------------------------------------------------------------------
+    // Shared Account / Support Routes
+    // -------------------------------------------------------------------------
+
+    GoRoute(
+      path: AppRoutes.deleteAccount,
+      builder: (context, state) => const DeleteAccountScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.supportAdminChat,
+      builder: (context, state) => const SupportAdminChatScreen(),
     ),
 
     // -------------------------------------------------------------------------
