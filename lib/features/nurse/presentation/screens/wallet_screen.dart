@@ -44,12 +44,6 @@ class _WalletScreenState extends State<WalletScreen>
     context.go(AppRoutes.nurseHome);
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature — coming soon')),
-    );
-  }
-
   Color _earningStatusColor(EarningStatus status) {
     return switch (status) {
       EarningStatus.completed => AppColors.successGreen,
@@ -96,12 +90,17 @@ class _WalletScreenState extends State<WalletScreen>
           onPressed: _goBack,
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart_rounded),
-            tooltip: 'Earnings analytics',
-            onPressed: () => context.push(AppRoutes.nurseEarningsAnalytics),
-          ),
-        ],
+  IconButton(
+    icon: const Icon(Icons.receipt_long_rounded),
+    tooltip: 'Transaction history',
+    onPressed: () => context.push(AppRoutes.nurseTransactionHistory),
+  ),
+  IconButton(
+    icon: const Icon(Icons.bar_chart_rounded),
+    tooltip: 'Earnings analytics',
+    onPressed: () => context.push(AppRoutes.nurseEarningsAnalytics),
+  ),
+],
       ),
       body: SafeArea(
         child: CustomScrollView(
@@ -132,14 +131,14 @@ class _WalletScreenState extends State<WalletScreen>
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     FilledButton.icon(
-                      onPressed: () => _showComingSoon('Bank withdrawal'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      icon: const Icon(Icons.account_balance_rounded),
-                      label: const Text('Withdraw to Bank'),
-                    ),
+  onPressed: () => context.push(AppRoutes.nurseWithdrawal),
+  style: FilledButton.styleFrom(
+    backgroundColor: AppColors.primaryBlue,
+    minimumSize: const Size(double.infinity, 50),
+  ),
+  icon: const Icon(Icons.account_balance_rounded),
+  label: const Text('Withdraw to Bank'),
+),
                   ],
                 ),
               ),

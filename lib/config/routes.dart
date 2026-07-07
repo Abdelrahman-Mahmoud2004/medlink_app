@@ -28,14 +28,37 @@ import '../features/nurse/presentation/screens/nurse_home_screen.dart';
 import '../features/nurse/presentation/screens/vital_signs_screen.dart';
 import '../features/nurse/presentation/screens/wallet_screen.dart';
 
+import '../features/nurse/presentation/screens/new_requests_screen.dart';
+import '../features/nurse/presentation/screens/request_details_screen.dart';
+import '../features/nurse/presentation/screens/gps_navigation_screen.dart';
+import '../features/nurse/presentation/screens/progress_notes_screen.dart';
+import '../features/nurse/presentation/screens/complete_visit_screen.dart';
+import '../features/nurse/presentation/screens/nurse_active_visit_screen.dart';
+import '../features/nurse/presentation/screens/withdrawal_screen.dart';
+import '../features/nurse/presentation/screens/transaction_history_screen.dart';
+import '../features/nurse/presentation/screens/nurse_messages_screen.dart';
+import '../features/nurse/presentation/screens/nurse_chat_detail_screen.dart';
+import '../features/nurse/presentation/screens/nurse_profile_settings_screen.dart';
+import '../features/nurse/presentation/screens/my_expertise_pricing_screen.dart';
+import '../features/nurse/presentation/screens/documents_upload_kyc_screen.dart';
+import '../features/nurse/presentation/screens/under_review_screen.dart';
+import '../features/nurse/presentation/screens/nurse_notifications_center_screen.dart';
+import '../features/nurse/presentation/screens/nurse_help_support_screen.dart';
+import '../features/nurse/presentation/screens/nurse_terms_privacy_screen.dart';
+import '../features/nurse/presentation/screens/bank_account_screen.dart';
+import '../features/nurse/presentation/screens/visit_report_screen.dart';
+import '../features/nurse/presentation/screens/report_issue_screen.dart';
+
 import '../features/patient/data/models/address_model.dart';
 import '../features/patient/data/models/booking_model.dart';
 import '../features/patient/data/models/family_member_model.dart';
 import '../features/patient/data/models/medical_record_model.dart';
 import '../features/patient/data/models/medication_model.dart';
 import '../features/patient/data/models/nurse_model.dart';
+import '../features/patient/data/models/request_model.dart';
 import '../features/patient/data/models/review_model.dart';
 import '../features/patient/data/models/visit_model.dart';
+import '../features/patient/data/models/vital_signs_model.dart';
 
 import '../features/patient/presentation/screens/active_visit_screen.dart';
 import '../features/patient/presentation/screens/add_edit_address_screen.dart';
@@ -106,6 +129,11 @@ final class AppRoutes {
   static const String patientWallet = '/patient/wallet';
   static const String patientMessages = '/patient/messages';
   static const String patientProfile = '/patient/profile';
+  static const String patientActiveVisit = '/patient/active-visit';
+
+  /// Backward compatibility for old patient-side calls.
+  /// If any old patient code uses AppRoutes.activeVisit, it will still work.
+  static const String activeVisit = patientActiveVisit;
 
   // ---------------------------------------------------------------------------
   // Patient Booking Flow
@@ -176,8 +204,27 @@ final class AppRoutes {
   static const String nurseContactUs = '/nurse/contact-us';
 
   static const String vitalSigns = '/vital-signs';
-  static const String activeVisit = '/nurse/active-visit';
   static const String nurseVitalSigns = '/nurse/vital-signs';
+  static const String nurseNewRequests = '/nurse/new-requests';
+  static const String nurseRequestDetails = '/nurse/request-details';
+  static const String nurseGpsNavigation = '/nurse/gps-navigation';
+  static const String nurseProgressNotes = '/nurse/progress-notes';
+  static const String nurseCompleteVisit = '/nurse/complete-visit';
+  static const String nurseWithdrawal = '/nurse/withdrawal';
+  static const String nurseTransactionHistory = '/nurse/transaction-history';
+  static const String nurseActiveVisit = '/nurse/active-visit';
+  static const String nurseMessages = '/nurse/messages';
+  static const String nurseChatDetail = '/nurse/chat-detail';
+  static const String nurseProfileSettings = '/nurse/profile-settings';
+  static const String nurseExpertisePricing = '/nurse/expertise-pricing';
+  static const String nurseDocumentsKyc = '/nurse/documents-kyc';
+  static const String nurseUnderReview = '/nurse/under-review';
+  static const String nurseNotifications = '/nurse/notifications';
+  static const String nurseHelpSupport = '/nurse/help-support';
+  static const String nurseTermsPrivacy = '/nurse/terms-privacy';
+  static const String nurseBankAccount = '/nurse/bank-account';
+  static const String nurseVisitReport = '/nurse/visit-report';
+  static const String nurseReportIssue = '/nurse/report-issue';
 
   // ---------------------------------------------------------------------------
   // Shared Routes
@@ -331,6 +378,23 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppRoutes.patientProfile,
       builder: (context, state) => const PatientProfileScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.patientActiveVisit,
+      builder: (context, state) {
+        final visit = _extractVisit(state.extra);
+
+        if (visit == null) {
+          return const _PlaceholderScreen(
+            title: 'Active Visit',
+          );
+        }
+
+        return ActiveVisitScreen(
+          visit: visit,
+        );
+      },
     ),
 
     // -------------------------------------------------------------------------
@@ -644,23 +708,6 @@ final GoRouter router = GoRouter(
     ),
 
     GoRoute(
-      path: AppRoutes.activeVisit,
-      builder: (context, state) {
-        final visit = _extractVisit(state.extra);
-
-        if (visit == null) {
-          return const _PlaceholderScreen(
-            title: 'Active Visit',
-          );
-        }
-
-        return ActiveVisitScreen(
-          visit: visit,
-        );
-      },
-    ),
-
-    GoRoute(
       path: AppRoutes.vitalSigns,
       builder: (context, state) => const VitalSignsScreen(),
     ),
@@ -670,15 +717,175 @@ final GoRouter router = GoRouter(
       builder: (context, state) => const VitalSignsScreen(),
     ),
 
+    GoRoute(
+      path: AppRoutes.nurseNewRequests,
+      builder: (context, state) => const NewRequestsScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseRequestDetails,
+      builder: (context, state) {
+        final request = state.extra is RequestModel
+            ? state.extra as RequestModel
+            : null;
+
+        return RequestDetailsScreen(
+          request: request,
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseGpsNavigation,
+      builder: (context, state) {
+        final request = state.extra is RequestModel
+            ? state.extra as RequestModel
+            : null;
+
+        return GpsNavigationScreen(
+          request: request,
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseProgressNotes,
+      builder: (context, state) {
+        final initialNotes =
+            state.extra is String ? state.extra as String : null;
+
+        return ProgressNotesScreen(
+          initialNotes: initialNotes,
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseCompleteVisit,
+      builder: (context, state) {
+        if (state.extra is Map) {
+          final data = Map<String, dynamic>.from(state.extra as Map);
+
+          return CompleteVisitScreen(
+            patientName: data['patientName']?.toString(),
+            serviceType: data['serviceType']?.toString(),
+            amount: data['amount'] is num
+                ? (data['amount'] as num).toDouble()
+                : null,
+            startTime: data['startTime'] is DateTime
+                ? data['startTime'] as DateTime
+                : null,
+            endTime: data['endTime'] is DateTime
+                ? data['endTime'] as DateTime
+                : null,
+            initialNotes: data['notes']?.toString(),
+            vitals: data['vitals'] is VitalSignsModel
+                ? data['vitals'] as VitalSignsModel
+                : null,
+          );
+        }
+
+        return const CompleteVisitScreen();
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseActiveVisit,
+      builder: (context, state) {
+        return NurseActiveVisitScreen(
+          payload: state.extra,
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseWithdrawal,
+      builder: (context, state) => const WithdrawalScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseTransactionHistory,
+      builder: (context, state) => const TransactionHistoryScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseMessages,
+      builder: (context, state) => const NurseMessagesScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseChatDetail,
+      builder: (context, state) {
+        final data = state.extra is Map
+            ? Map<String, dynamic>.from(state.extra as Map)
+            : const <String, dynamic>{};
+
+        return NurseChatDetailScreen(
+          patientName: data['patientName']?.toString() ?? 'Patient',
+          serviceType: data['serviceType']?.toString() ?? 'Home Visit',
+        );
+      },
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseProfileSettings,
+      builder: (context, state) => const NurseProfileSettingsScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseExpertisePricing,
+      builder: (context, state) => const MyExpertisePricingScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseDocumentsKyc,
+      builder: (context, state) => const DocumentsUploadKycScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseUnderReview,
+      builder: (context, state) => const UnderReviewScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseNotifications,
+      builder: (context, state) => const NurseNotificationsCenterScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseHelpSupport,
+      builder: (context, state) => const NurseHelpSupportScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseTermsPrivacy,
+      builder: (context, state) => const NurseTermsPrivacyScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseBankAccount,
+      builder: (context, state) => const BankAccountScreen(),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseVisitReport,
+      builder: (context, state) => VisitReportScreen(
+        payload: state.extra,
+      ),
+    ),
+
+    GoRoute(
+      path: AppRoutes.nurseReportIssue,
+      builder: (context, state) => const ReportIssueScreen(),
+    ),
+
     // -------------------------------------------------------------------------
-    // Optional / Future Nurse Placeholder Routes
+    // Nurse Legacy / Alias Routes
     // -------------------------------------------------------------------------
 
     GoRoute(
       path: AppRoutes.nurseSettings,
-      builder: (context, state) => const _PlaceholderScreen(
-        title: 'Nurse Settings',
-      ),
+      builder: (context, state) => const NurseProfileSettingsScreen(),
     ),
 
     GoRoute(
@@ -697,30 +904,22 @@ final GoRouter router = GoRouter(
 
     GoRoute(
       path: AppRoutes.nursePrivacyPolicy,
-      builder: (context, state) => const _PlaceholderScreen(
-        title: 'Privacy Policy',
-      ),
+      builder: (context, state) => const NurseTermsPrivacyScreen(),
     ),
 
     GoRoute(
       path: AppRoutes.nurseTermsOfService,
-      builder: (context, state) => const _PlaceholderScreen(
-        title: 'Terms of Service',
-      ),
+      builder: (context, state) => const NurseTermsPrivacyScreen(),
     ),
 
     GoRoute(
       path: AppRoutes.nurseHelpCenter,
-      builder: (context, state) => const _PlaceholderScreen(
-        title: 'Help Center',
-      ),
+      builder: (context, state) => const NurseHelpSupportScreen(),
     ),
 
     GoRoute(
       path: AppRoutes.nurseContactUs,
-      builder: (context, state) => const _PlaceholderScreen(
-        title: 'Contact Us',
-      ),
+      builder: (context, state) => const NurseHelpSupportScreen(),
     ),
   ],
 );

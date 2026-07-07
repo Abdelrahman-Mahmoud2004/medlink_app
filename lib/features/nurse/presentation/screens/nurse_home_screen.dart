@@ -40,12 +40,6 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
     super.dispose();
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature — coming soon')),
-    );
-  }
-
   void _handleAccept(RequestModel request) {
     setState(() {
       _activeRequests.removeWhere((item) => item.id == request.id);
@@ -72,24 +66,24 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
   }
 
   void _handleNavTap(int index) {
-    switch (index) {
-      case 0:
-        setState(() => _selectedNavIndex = 0);
-        break;
-      case 1:
-        _pushTab(1, AppRoutes.nurseSchedule);
-        break;
-      case 2:
-        _pushTab(2, AppRoutes.nurseWallet);
-        break;
-      case 3:
-        _showComingSoon('Messages');
-        break;
-      case 4:
-        _pushTab(4, AppRoutes.nurseSettings);
-        break;
-    }
+  switch (index) {
+    case 0:
+      setState(() => _selectedNavIndex = 0);
+      break;
+    case 1:
+      _pushTab(1, AppRoutes.nurseSchedule);
+      break;
+    case 2:
+      _pushTab(2, AppRoutes.nurseWallet);
+      break;
+    case 3:
+      _pushTab(3, AppRoutes.nurseMessages);
+      break;
+    case 4:
+      _pushTab(4, AppRoutes.nurseProfileSettings);
+      break;
   }
+}
 
   Future<void> _pushTab(int index, String route) async {
     setState(() => _selectedNavIndex = index);
@@ -156,11 +150,19 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
                     _ActiveRequestsSection(
                       requests: _activeRequests,
                       statusColorResolver: _requestStatusColor,
-                      onSeeAll: () => context.push(AppRoutes.nurseSchedule),
+                      onSeeAll: () => context.push(AppRoutes.nurseNewRequests),                    
                       onAccept: _handleAccept,
                       onDecline: _handleDecline,
-                      onStartTravel: () => _showComingSoon('Navigation'),
-                    ),
+                     
+onStartTravel: (request) {
+    context.push(
+      AppRoutes.nurseGpsNavigation,
+      extra: request,
+    );
+  },
+),
+
+                  
                     const SizedBox(height: AppSpacing.xl),
                     _RecentEarningsSection(
                       earnings: _recentEarnings,
@@ -210,7 +212,7 @@ class _NurseHomeScreenState extends State<NurseHomeScreen> {
           padding: const EdgeInsets.only(right: AppSpacing.lg),
           child: Center(
             child: GestureDetector(
-              onTap: () => _showComingSoon('Notifications'),
+              onTap: () => context.push(AppRoutes.nurseNotifications),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -359,7 +361,7 @@ class _ActiveRequestsSection extends StatelessWidget {
   final VoidCallback onSeeAll;
   final ValueChanged<RequestModel> onAccept;
   final ValueChanged<RequestModel> onDecline;
-  final VoidCallback onStartTravel;
+  final ValueChanged<RequestModel> onStartTravel;
 
   const _ActiveRequestsSection({
     required this.requests,
@@ -397,7 +399,7 @@ class _ActiveRequestsSection extends StatelessWidget {
                 statusColor: statusColorResolver(request.status),
                 onAccept: () => onAccept(request),
                 onDecline: () => onDecline(request),
-                onStartTravel: onStartTravel,
+                onStartTravel: () => onStartTravel(request),
               );
             },
           ),
